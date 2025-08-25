@@ -1,8 +1,9 @@
 package ewsutil
 
 import (
-	"github.com/mhewedy/ews"
 	"math"
+
+	"github.com/hoshii-ai/ews"
 )
 
 // FindPeople find persona slice by query string

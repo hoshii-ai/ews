@@ -2,13 +2,14 @@ package ews_test
 
 import (
 	"fmt"
-	. "github.com/mhewedy/ews"
-	"github.com/mhewedy/ews/ewsutil"
 	"io/ioutil"
 	"math"
 	"os"
 	"testing"
 	"time"
+
+	. "github.com/hoshii-ai/ews"
+	"github.com/hoshii-ai/ews/ewsutil"
 )
 
 func Test_Example(t *testing.T) {

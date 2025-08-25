@@ -7,7 +7,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/mhewedy/ews"
+	"github.com/hoshii-ai/ews"
 	"github.com/mhewedy/ews/ewsutil"
 	"log"
 )

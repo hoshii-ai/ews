@@ -3,7 +3,7 @@ package ewsutil
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/mhewedy/ews"
+	"github.com/hoshii-ai/ews"
 )
 
 // GetUserPhoto
