@@ -60,11 +60,13 @@ func Test_Example(t *testing.T) {
 }
 
 func testSendEmail(c Client) error {
-	return ewsutil.SendEmail(c,
+	_, err := ewsutil.SendEmail(c,
 		[]string{"mhewedy@gmail.com", "someone@else.com"},
 		"An email subject",
 		"The email body, as plain text",
 	)
+
+	return err
 }
 
 func testCreateCalendarItem(c Client) error {

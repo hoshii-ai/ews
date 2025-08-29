@@ -84,3 +84,9 @@ NTLM is supported as well as Basic authentication
 
 #### Reference:
 https://docs.microsoft.com/en-us/exchange/client-developer/web-service-reference/ews-operations-in-exchange
+
+
+## This fork
+Some features might now work (e.g., related to calendar items or personas). 
+The reason is, the original repo did certain assumptions w.r.t. how the remote server specifies the namespaces in the response headers, we turned out
+not to be true for our use-case. Hence, we had to refactor the code around and always define complete namespaces, and we did not bother to update the entire codebase.
