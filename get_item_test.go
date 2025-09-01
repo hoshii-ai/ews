@@ -4,13 +4,24 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/joho/godotenv"
 )
 
 var (
-	url      = os.Getenv("EWS_URL")
+	url      string
+	username string
+	password string
+)
+
+func TestMain(m *testing.M) {
+	_ = godotenv.Load("../.env")
+
+	url = os.Getenv("EWS_URL")
 	username = os.Getenv("EWS_USERNAME")
 	password = os.Getenv("EWS_PASSWORD")
-)
+	os.Exit(m.Run())
+}
 
 func TestGetItem(t *testing.T) {
 	client := NewClient(url, username, password, &Config{

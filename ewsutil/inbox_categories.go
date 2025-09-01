@@ -109,3 +109,69 @@ func GetInboxCategories(c ews.Client) (*ews.CategoryList, error) {
 
 	return categories, nil
 }
+
+func AddCategories(c ews.Client, categories ...ews.Category) error {
+	categoryList, err := GetInboxCategories(c)
+	if err != nil {
+		return errors.Wrap(err, "failed to get inbox categories")
+	}
+	oldXmlData, err := categoryList.CategoryListToBase64()
+	if err != nil {
+		return errors.Wrap(err, "failed to convert category list to base64")
+	}
+
+	for _, category := range categories {
+		err := categoryList.AddCategory(category.Name, category.Color)
+		if err != nil {
+			// Duplicate category, skip
+			continue
+		}
+	}
+	xmlData, err := categoryList.CategoryListToBase64()
+	if err != nil {
+		return errors.Wrap(err, "failed to convert category list to base64")
+	}
+	if xmlData == oldXmlData {
+		// No changes, skip
+		return nil
+	}
+
+	updateItemRequest := &ews.UpdateItemRequest{
+		MessageDisposition: ews.MessageDispositionSaveOnly,
+		ItemChanges: ews.ItemChanges{
+			ItemChange: []ews.ItemChange{
+				{
+					ItemId: categoryList.ItemId,
+					Updates: ews.Updates{
+						SetItemField: []ews.SetItemField{
+							{
+								ExtendedFieldURI: &ews.ExtendedFieldURI{
+									PropertyTag:  ews.PropertyTagCategories,
+									PropertyType: ews.PropertyTypeBinary,
+								},
+								Message: &ews.Message{
+									ExtendedProperties: []ews.ExtendedProperty{
+										{
+											Value: &xmlData,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	updateItemResponse, err := ews.UpdateItem(c, updateItemRequest)
+	if err != nil {
+		return errors.Wrap(err, "failed to update item")
+	}
+
+	if updateItemResponse.ResponseMessages.UpdateItemResponseMessage.ResponseClass != ews.ResponseClassSuccess {
+		return errors.New("failed to update item: " + updateItemResponse.ResponseMessages.UpdateItemResponseMessage.ResponseCode)
+	}
+
+	return nil
+}

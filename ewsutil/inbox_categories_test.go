@@ -6,13 +6,24 @@ import (
 	"testing"
 
 	"github.com/hoshii-ai/ews"
+	"github.com/joho/godotenv"
 )
 
 var (
-	url      = os.Getenv("EWS_URL")
+	url      string
+	username string
+	password string
+)
+
+func TestMain(m *testing.M) {
+	_ = godotenv.Load("../.env")
+
+	url = os.Getenv("EWS_URL")
 	username = os.Getenv("EWS_USERNAME")
 	password = os.Getenv("EWS_PASSWORD")
-)
+
+	os.Exit(m.Run())
+}
 
 func Test_GetInboxCategories(t *testing.T) {
 	client := ews.NewClient(url, username, password, &ews.Config{
@@ -47,55 +58,11 @@ func Test_AddCategory(t *testing.T) {
 		SkipTLS: false,
 	})
 
-	categories, err := GetInboxCategories(client)
-	if err != nil {
-		t.Fatalf("failed to get inbox categories: %v", err)
-	}
-
-	err = categories.AddCategory("this_comes_from_hoshii_3", ews.ColorPurple)
+	err := AddCategories(client, ews.Category{
+		Name:  "test_hoshii_5",
+		Color: ews.ColorBlue,
+	})
 	if err != nil {
 		t.Fatalf("failed to add category: %v", err)
 	}
-
-	xmlData, err := categories.CategoryListToBase64()
-	if err != nil {
-		t.Fatalf("failed to convert category list to base64: %v", err)
-	}
-
-	fmt.Println(xmlData)
-
-	updateItemRequest := &ews.UpdateItemRequest{
-		MessageDisposition: ews.MessageDispositionSaveOnly,
-		ItemChanges: ews.ItemChanges{
-			ItemChange: []ews.ItemChange{
-				{
-					ItemId: categories.ItemId,
-					Updates: ews.Updates{
-						SetItemField: []ews.SetItemField{
-							{
-								ExtendedFieldURI: &ews.ExtendedFieldURI{
-									PropertyTag:  ews.PropertyTagCategories,
-									PropertyType: ews.PropertyTypeBinary,
-								},
-								Message: &ews.Message{
-									ExtendedProperties: []ews.ExtendedProperty{
-										{
-											Value: &xmlData,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	updateItemResponse, err := ews.UpdateItem(client, updateItemRequest)
-	if err != nil {
-		t.Fatalf("failed to update item: %v", err)
-	}
-
-	fmt.Println(updateItemResponse)
 }

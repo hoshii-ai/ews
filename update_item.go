@@ -81,8 +81,8 @@ type UpdateItemResponseMessages struct {
 }
 
 type UpdateItemResponseMessage struct {
-	ResponseClass string `xml:"ResponseClass,attr"`
-	ResponseCode  string `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ResponseCode"`
+	ResponseClass ResponseClass `xml:"ResponseClass,attr"`
+	ResponseCode  string        `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ResponseCode"`
 }
 
 // UpdateItem takes an UpdateItem request and returns an UpdateItemResponse.
