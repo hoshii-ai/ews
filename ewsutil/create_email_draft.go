@@ -3,21 +3,27 @@ package ewsutil
 import (
 	"github.com/hoshii-ai/ews"
 	"github.com/hoshii-ai/ews/utils"
-	"github.com/pkg/errors"
 )
 
 // SendEmail helper method to send Message
-func SendEmail(c ews.Client, to []string, subject, body string, attachments ...ews.FileAttachment) (*ews.ItemId, error) {
+func CreateEmailDraft(c ews.Client, to []string, subject, body string, attachments ...ews.FileAttachment) (*ews.ItemId, error) {
 	m := ews.Message{
+		//ItemClass: utils.Ptr("IPM.Note"),
 		Subject: utils.Ptr(subject),
 		Body: &ews.Body{
 			BodyType: "HTML",
 			Body:     []byte(body),
 		},
+		// Sender: &ews.OneMailbox{
+		// 	Mailbox: ews.Mailbox{
+		// 		EmailAddress: c.GetUsername(),
+		// 	},
+		// },
 		ToRecipients: &ews.XMailbox{
 			Mailbox: make([]ews.Mailbox, len(to)),
 		},
 	}
+
 	for i, addr := range to {
 		m.ToRecipients.Mailbox[i].EmailAddress = addr
 	}
@@ -29,16 +35,7 @@ func SendEmail(c ews.Client, to []string, subject, body string, attachments ...e
 	}
 
 	return ews.CreateMessageItem(c, m, ews.CreateItemRequestConfig{
-		MessageDisposition: ews.MessageDispositionSendAndSaveCopy,
-		SavedItemFolderId:  &ews.SavedItemFolderId{DistinguishedFolderId: ews.DistinguishedFolderId{Id: "sent"}},
+		MessageDisposition: ews.MessageDispositionSaveOnly,
+		SavedItemFolderId:  &ews.SavedItemFolderId{DistinguishedFolderId: ews.DistinguishedFolderId{Id: "drafts"}},
 	})
-}
-
-func SendEmailWithItemId(c ews.Client, itemId *ews.ItemId) error {
-	_, err := ews.SendItem(c, *itemId, true)
-	if err != nil {
-		return errors.Wrap(err, "failed to send email")
-	}
-
-	return nil
 }

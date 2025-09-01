@@ -15,11 +15,6 @@ type RoomLists struct {
 	Address []EmailAddress `xml:"Address"`
 }
 
-type ItemId struct {
-	Id        string `xml:"Id,attr"`
-	ChangeKey string `xml:"ChangeKey,attr"`
-}
-
 type getRoomListsResponseEnvelop struct {
 	XMLName struct{}                 `xml:"Envelope"`
 	Body    getRoomListsResponseBody `xml:"Body"`

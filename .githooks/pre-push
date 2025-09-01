@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Scan tracked Go test files for hard-coded assignments to url/username/password
+# Blocks push if any matches are found. Allows os.Getenv-based assignments.
+
+pattern='^[[:space:]]*((const|var)[[:space:]]+)?(url|username|password)[[:space:]]*(:=|=)[[:space:]]*("([^"\\]|\\.)*"|`[^`]*`)'
+
+blocked=0
+
+# Get tracked *_test.go files (avoid subshells for macOS Bash compatibility)
+test_files=$(git ls-files "*_test.go" 2>/dev/null || true)
+
+if [ -z "${test_files}" ]; then
+    exit 0
+fi
+
+for f in ${test_files}; do
+    case "$f" in
+        vendor/*) continue ;;
+    esac
+    [ -f "$f" ] || continue
+
+    hits=$(grep -nE "$pattern" "$f" 2>/dev/null | grep -v 'os\.Getenv' | grep -v '^[[:space:]]*//' || true)
+    if [ -n "$hits" ]; then
+        echo "Error: hard-coded secret-like assignments found in $f:"
+        echo "$hits"
+        blocked=1
+    fi
+done
+
+if [ "$blocked" -eq 1 ]; then
+    echo
+    echo "Push blocked. Replace literals with os.Getenv() (e.g., EWS_URL, EWS_USERNAME, EWS_PASSWORD)."
+    exit 1
+fi
+
+exit 0
+
