@@ -47,7 +47,7 @@ func SendEmail(c ews.Client, to []string, subject, body string, attachments ...e
 func sendEmailWithSaveThenSend(c ews.Client, m ews.Message) (*ews.ItemId, error) {
 	// Save the email draft first
 	itemId, err := ews.CreateMessageItem(c, m, ews.CreateItemRequestConfig{
-		MessageDisposition: ews.MessageDispositionSendOnly,
+		MessageDisposition: ews.MessageDispositionSaveOnly,
 		SavedItemFolderId:  &ews.SavedItemFolderId{DistinguishedFolderId: ews.DistinguishedFolderId{Id: "drafts"}},
 	})
 	if err != nil {
