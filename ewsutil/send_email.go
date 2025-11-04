@@ -28,10 +28,38 @@ func SendEmail(c ews.Client, to []string, subject, body string, attachments ...e
 		}
 	}
 
-	return ews.CreateMessageItem(c, m, ews.CreateItemRequestConfig{
-		MessageDisposition: ews.MessageDispositionSendAndSaveCopy,
-		SavedItemFolderId:  &ews.SavedItemFolderId{DistinguishedFolderId: ews.DistinguishedFolderId{Id: "sent"}},
+	itemId, err := sendEmailWithSaveThenSend(c, m)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to send email")
+	}
+
+	return itemId, nil
+}
+
+// This function is deprecated: some EWS servers do not return the item id after successfully creating the message item
+// func sendEmailWithAtomicSaveAndSend(c ews.Client, m ews.Message) (*ews.ItemId, error) {
+// 	return ews.CreateMessageItem(c, m, ews.CreateItemRequestConfig{
+// 		MessageDisposition: ews.MessageDispositionSendAndSaveCopy,
+// 		SavedItemFolderId:  &ews.SavedItemFolderId{DistinguishedFolderId: ews.DistinguishedFolderId{Id: "sentitems"}},
+// 	})
+// }
+
+func sendEmailWithSaveThenSend(c ews.Client, m ews.Message) (*ews.ItemId, error) {
+	// Save the email draft first
+	itemId, err := ews.CreateMessageItem(c, m, ews.CreateItemRequestConfig{
+		MessageDisposition: ews.MessageDispositionSendOnly,
+		SavedItemFolderId:  &ews.SavedItemFolderId{DistinguishedFolderId: ews.DistinguishedFolderId{Id: "drafts"}},
 	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create message item")
+	}
+
+	// Send the email draft
+	if err := SendEmailWithItemId(c, itemId); err != nil {
+		return nil, errors.Wrap(err, "failed to send email")
+	}
+
+	return itemId, nil
 }
 
 func SendEmailWithItemId(c ews.Client, itemId *ews.ItemId) error {
