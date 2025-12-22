@@ -84,6 +84,8 @@ type Message struct {
 	EntityExtractionResult       *struct{}               `xml:"http://schemas.microsoft.com/exchange/services/2006/types EntityExtractionResult,omitempty"`
 	Sender                       *OneMailbox             `xml:"http://schemas.microsoft.com/exchange/services/2006/types Sender,omitempty"`
 	ToRecipients                 *XMailbox               `xml:"http://schemas.microsoft.com/exchange/services/2006/types ToRecipients,omitempty"`
+	CcRecipients                 *XMailbox               `xml:"http://schemas.microsoft.com/exchange/services/2006/types CcRecipients,omitempty"`
+	BccRecipients                *XMailbox               `xml:"http://schemas.microsoft.com/exchange/services/2006/types BccRecipients,omitempty"`
 	IsReadReceiptRequested       *bool                   `xml:"http://schemas.microsoft.com/exchange/services/2006/types IsReadReceiptRequested,omitempty"`
 	ConversationIndex            *string                 `xml:"http://schemas.microsoft.com/exchange/services/2006/types ConversationIndex,omitempty"`
 	ConversationTopic            *string                 `xml:"http://schemas.microsoft.com/exchange/services/2006/types ConversationTopic,omitempty"`

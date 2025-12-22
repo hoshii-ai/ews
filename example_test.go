@@ -62,6 +62,8 @@ func Test_Example(t *testing.T) {
 func testSendEmail(c Client) error {
 	_, err := ewsutil.SendEmail(c,
 		[]string{"mhewedy@gmail.com", "someone@else.com"},
+		[]string{"cc@example.com"},
+		[]string{"bcc@example.com"},
 		"An email subject",
 		"The email body, as plain text",
 	)

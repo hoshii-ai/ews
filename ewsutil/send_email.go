@@ -7,7 +7,17 @@ import (
 )
 
 // SendEmail helper method to send Message
-func SendEmail(c ews.Client, to []string, subject, body string, attachments ...ews.FileAttachment) (*ews.ItemId, error) {
+func SendEmail(
+	c ews.Client,
+	to []string,
+	cc []string,
+	bcc []string,
+	subject,
+	body string,
+	attachments ...ews.FileAttachment) (*ews.ItemId, error) {
+	if len(to) == 0 {
+		return nil, errors.New("to is required")
+	}
 	m := ews.Message{
 		Subject: utils.Ptr(subject),
 		Body: &ews.Body{
@@ -20,6 +30,22 @@ func SendEmail(c ews.Client, to []string, subject, body string, attachments ...e
 	}
 	for i, addr := range to {
 		m.ToRecipients.Mailbox[i].EmailAddress = addr
+	}
+	if len(cc) > 0 {
+		m.CcRecipients = &ews.XMailbox{
+			Mailbox: make([]ews.Mailbox, len(cc)),
+		}
+		for i, addr := range cc {
+			m.CcRecipients.Mailbox[i].EmailAddress = addr
+		}
+	}
+	if len(bcc) > 0 {
+		m.BccRecipients = &ews.XMailbox{
+			Mailbox: make([]ews.Mailbox, len(bcc)),
+		}
+		for i, addr := range bcc {
+			m.BccRecipients.Mailbox[i].EmailAddress = addr
+		}
 	}
 
 	if len(attachments) > 0 {
