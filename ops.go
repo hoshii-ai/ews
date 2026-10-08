@@ -101,8 +101,9 @@ const (
 type subscribeRequest struct {
 	XMLName xml.Name `xml:"http://schemas.microsoft.com/exchange/services/2006/messages Subscribe"`
 	Request struct {
-		FolderIds  folderRefs `xml:"http://schemas.microsoft.com/exchange/services/2006/types FolderIds"`
-		EventTypes struct {
+		SubscribeToAllFolders bool        `xml:"SubscribeToAllFolders,attr,omitempty"`
+		FolderIds             *folderRefs `xml:"http://schemas.microsoft.com/exchange/services/2006/types FolderIds,omitempty"`
+		EventTypes            struct {
 			EventType []EventType `xml:"http://schemas.microsoft.com/exchange/services/2006/types EventType"`
 		} `xml:"http://schemas.microsoft.com/exchange/services/2006/types EventTypes"`
 	} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages StreamingSubscriptionRequest"`
@@ -127,12 +128,28 @@ func Subscribe(ctx context.Context, c ContextClient, folders []FolderRef, events
 	if len(folders) == 0 || len(events) == 0 {
 		return "", errors.New("ews: Subscribe needs folders and event types")
 	}
+	refs := newFolderRefs(folders)
 	var req subscribeRequest
-	req.Request.FolderIds = newFolderRefs(folders)
+	req.Request.FolderIds = &refs
 	req.Request.EventTypes.EventType = events
+	return subscribe(ctx, c, &req, opts)
+}
 
+// SubscribeToAllFolders creates a streaming subscription on every folder of the
+// mailbox (Exchange 2010 SP1 and later) and returns the SubscriptionId.
+func SubscribeToAllFolders(ctx context.Context, c ContextClient, events []EventType, opts ...RequestOption) (string, error) {
+	if len(events) == 0 {
+		return "", errors.New("ews: SubscribeToAllFolders needs event types")
+	}
+	var req subscribeRequest
+	req.Request.SubscribeToAllFolders = true
+	req.Request.EventTypes.EventType = events
+	return subscribe(ctx, c, &req, opts)
+}
+
+func subscribe(ctx context.Context, c ContextClient, req *subscribeRequest, opts []RequestOption) (string, error) {
 	var env subscribeEnvelope
-	if err := call(ctx, c, &req, &env, opts); err != nil {
+	if err := call(ctx, c, req, &env, opts); err != nil {
 		return "", err
 	}
 	msg := env.Body.Response.Messages.Message
