@@ -1,0 +1,10 @@
+<CreateItem xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" MessageDisposition="SendAndSaveCopy">
+  <SavedItemFolderId xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <DistinguishedFolderId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Id="sentitems"></DistinguishedFolderId>
+  </SavedItemFolderId>
+  <Items xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <Message xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+      <MimeContent xmlns="http://schemas.microsoft.com/exchange/services/2006/types" CharacterSet="UTF-8">TWVzc2FnZS1JRDogPHIxQGV4YW1wbGUuY29tPg0KSW4tUmVwbHktVG86IDxhQHg+DQpSZWZlcmVuY2VzOiA8YUB4Pg0KU3ViamVjdDogUmU6IGhpDQoNCnRoYW5rcw0K</MimeContent>
+    </Message>
+  </Items>
+</CreateItem>

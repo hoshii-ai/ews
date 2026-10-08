@@ -1,0 +1,15 @@
+<UpdateItem xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" MessageDisposition="SaveOnly">
+  <ItemChanges xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <ItemChange xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+      <ItemId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Id="AAMk1" ChangeKey="CK1"></ItemId>
+      <Updates xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+        <SetItemField xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+          <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:Subject"></FieldURI>
+          <Message xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+            <Subject xmlns="http://schemas.microsoft.com/exchange/services/2006/types">new</Subject>
+          </Message>
+        </SetItemField>
+      </Updates>
+    </ItemChange>
+  </ItemChanges>
+</UpdateItem>

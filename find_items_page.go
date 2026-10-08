@@ -27,6 +27,9 @@ type FindItemsOptions struct {
 	// AdditionalProperties are FieldURIs. item:DateTimeReceived,
 	// item:ParentFolderId and message:InternetMessageId are always requested.
 	AdditionalProperties []string
+	// Associated searches folder-associated (FAI) items, e.g. configuration
+	// items, instead of regular mail (Traversal=Associated).
+	Associated bool
 	// Mailbox is the SMTP address of another mailbox (delegate access). It only
 	// applies to distinguished folders; pair with WithAnchorMailbox.
 	Mailbox string
@@ -131,8 +134,12 @@ func FindItemsPage(ctx context.Context, c ContextClient, folder FolderRef, o Fin
 		}
 	}
 
+	traversal := FindItemTraversalShallow
+	if o.Associated {
+		traversal = FindItemTraversalAssociated
+	}
 	req := findItemsPageRequest{
-		Traversal:       string(FindItemTraversalShallow),
+		Traversal:       string(traversal),
 		ItemShape:       ItemShape{BaseShape: BaseShapeIdOnly, AdditionalProperties: props},
 		View:            indexedPageItemView{MaxEntriesReturned: max, Offset: o.Offset, BasePoint: "Beginning"},
 		Restriction:     o.Restriction,

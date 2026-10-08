@@ -1,6 +1,7 @@
 package ews
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/xml"
 	"errors"
@@ -58,6 +59,8 @@ type GetItemResponseMessages struct {
 type GetItemResponseMessage struct {
 	ResponseClass ResponseClass `xml:"ResponseClass,attr"`
 	ResponseCode  string        `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ResponseCode"`
+	MessageText   string        `xml:"http://schemas.microsoft.com/exchange/services/2006/messages MessageText"`
+	MessageXml    MessageXml    `xml:"http://schemas.microsoft.com/exchange/services/2006/messages MessageXml"`
 	Items         Items         `xml:"http://schemas.microsoft.com/exchange/services/2006/messages Items"`
 }
 
@@ -145,4 +148,18 @@ func GetItem(c Client, itemId ItemId, config GetItemRequestConfig) (*GetItemResp
 	}
 
 	return &soapResp.Body.GetItemResponse, nil
+}
+
+// GetItemContext is GetItem with a context and per-request options (e.g.
+// WithAnchorMailbox). ResponseClass=Error is returned as *ResponseError.
+func GetItemContext(ctx context.Context, c ContextClient, itemId ItemId, config GetItemRequestConfig, opts ...RequestOption) (*GetItemResponse, error) {
+	var env GetItemResponseEnvelope
+	if err := call(ctx, c, NewGetItemRequest(itemId, config), &env, opts); err != nil {
+		return nil, err
+	}
+	m := env.Body.GetItemResponse.ResponseMessages.GetItemResponseMessage
+	if err := (responseMessage{ResponseClass: m.ResponseClass, ResponseCode: m.ResponseCode, MessageText: m.MessageText, MessageXml: m.MessageXml}).err(); err != nil {
+		return nil, err
+	}
+	return &env.Body.GetItemResponse, nil
 }

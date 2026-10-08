@@ -1,6 +1,7 @@
 package ews
 
 import (
+	"context"
 	"encoding/xml"
 	"errors"
 )
@@ -83,6 +84,8 @@ type UpdateItemResponseMessages struct {
 type UpdateItemResponseMessage struct {
 	ResponseClass ResponseClass `xml:"ResponseClass,attr"`
 	ResponseCode  string        `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ResponseCode"`
+	MessageText   string        `xml:"http://schemas.microsoft.com/exchange/services/2006/messages MessageText"`
+	MessageXml    MessageXml    `xml:"http://schemas.microsoft.com/exchange/services/2006/messages MessageXml"`
 }
 
 // UpdateItem takes an UpdateItem request and returns an UpdateItemResponse.
@@ -109,4 +112,18 @@ func UpdateItem(c Client, r *UpdateItemRequest) (*UpdateItemResponse, error) {
 	}
 
 	return &soapResp.Body.UpdateItemResponse, nil
+}
+
+// UpdateItemContext is UpdateItem with a context and per-request options (e.g.
+// WithAnchorMailbox). ResponseClass=Error is returned as *ResponseError.
+func UpdateItemContext(ctx context.Context, c ContextClient, r *UpdateItemRequest, opts ...RequestOption) (*UpdateItemResponse, error) {
+	var env UpdateItemResponseEnvelope
+	if err := call(ctx, c, r, &env, opts); err != nil {
+		return nil, err
+	}
+	m := env.Body.UpdateItemResponse.ResponseMessages.UpdateItemResponseMessage
+	if err := (responseMessage{ResponseClass: m.ResponseClass, ResponseCode: m.ResponseCode, MessageText: m.MessageText, MessageXml: m.MessageXml}).err(); err != nil {
+		return nil, err
+	}
+	return &env.Body.UpdateItemResponse, nil
 }

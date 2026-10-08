@@ -1,0 +1,5 @@
+<SendItem xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" SaveItemToFolder="true">
+  <ItemIds xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <ItemId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Id="AAMk1" ChangeKey="CK1"></ItemId>
+  </ItemIds>
+</SendItem>
