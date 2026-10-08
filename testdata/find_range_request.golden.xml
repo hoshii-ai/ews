@@ -1,0 +1,39 @@
+<FindItem xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" Traversal="Shallow">
+  <ItemShape xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <BaseShape xmlns="http://schemas.microsoft.com/exchange/services/2006/types">IdOnly</BaseShape>
+    <AdditionalProperties xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:DateTimeReceived"></FieldURI>
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:ParentFolderId"></FieldURI>
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="message:InternetMessageId"></FieldURI>
+    </AdditionalProperties>
+  </ItemShape>
+  <IndexedPageItemView xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" MaxEntriesReturned="2" Offset="0" BasePoint="Beginning"></IndexedPageItemView>
+  <Restriction xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <And xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+      <IsGreaterThanOrEqualTo xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+        <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:DateTimeReceived"></FieldURI>
+        <FieldURIOrConstant xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+          <Constant xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Value="2024-05-01T00:00:00Z"></Constant>
+        </FieldURIOrConstant>
+      </IsGreaterThanOrEqualTo>
+      <IsLessThan xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+        <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:DateTimeReceived"></FieldURI>
+        <FieldURIOrConstant xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+          <Constant xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Value="2024-05-03T00:00:00Z"></Constant>
+        </FieldURIOrConstant>
+      </IsLessThan>
+    </And>
+  </Restriction>
+  <SortOrder xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <FieldOrder xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Order="Ascending">
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:DateTimeReceived"></FieldURI>
+    </FieldOrder>
+  </SortOrder>
+  <ParentFolderIds xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <DistinguishedFolderId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Id="inbox">
+      <Mailbox xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+        <EmailAddress xmlns="http://schemas.microsoft.com/exchange/services/2006/types">shared@example.com</EmailAddress>
+      </Mailbox>
+    </DistinguishedFolderId>
+  </ParentFolderIds>
+</FindItem>

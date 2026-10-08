@@ -2,6 +2,7 @@ package ews
 
 import (
 	"encoding/xml"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -27,9 +28,32 @@ func (s SoapError) Error() string {
 	return s.Fault.Faultstring
 }
 
+// Unwrap exposes the EWS ResponseCode carried in the fault detail, if any, as
+// a *ResponseError (e.g. ErrorServerBusy with BackOffMilliseconds).
+func (s SoapError) Unwrap() error {
+	if s.Fault == nil || s.Fault.Detail.ResponseCode == "" {
+		return nil
+	}
+	d := s.Fault.Detail
+	return &ResponseError{
+		Class:               ResponseClassError,
+		Code:                d.ResponseCode,
+		MessageText:         d.Message,
+		BackOffMilliseconds: backOff(d.MessageXml.Values),
+	}
+}
+
+// ErrUnauthorized matches (errors.Is) an HTTP 401 response. Callers must not
+// retry it: repeated bad credentials can lock the AD account.
+var ErrUnauthorized = errors.New("ews: unauthorized (HTTP 401)")
+
 type HTTPError struct {
 	Status     string
 	StatusCode int
+}
+
+func (s HTTPError) Is(target error) bool {
+	return target == ErrUnauthorized && s.StatusCode == http.StatusUnauthorized
 }
 
 func (s HTTPError) Error() string {
@@ -57,9 +81,10 @@ type detail struct {
 }
 
 type faultMessageXml struct {
-	LineNumber   string `xml:"LineNumber"`
-	LinePosition string `xml:"LinePosition"`
-	Violation    string `xml:"Violation"`
+	LineNumber   string            `xml:"LineNumber"`
+	LinePosition string            `xml:"LinePosition"`
+	Violation    string            `xml:"Violation"`
+	Values       []MessageXmlValue `xml:"Value"`
 }
 
 func parseSoapFault(soapMessage string) (*Fault, error) {

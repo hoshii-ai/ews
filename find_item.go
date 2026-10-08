@@ -2,6 +2,7 @@ package ews
 
 import (
 	"encoding/xml"
+	"time"
 
 	"github.com/hoshii-ai/ews/utils"
 )
@@ -18,7 +19,37 @@ type FindItemRequest struct {
 }
 
 type Restriction struct {
-	IsEqualTo *IsEqualTo `xml:"http://schemas.microsoft.com/exchange/services/2006/types IsEqualTo,omitempty"`
+	IsEqualTo              *IsEqualTo              `xml:"http://schemas.microsoft.com/exchange/services/2006/types IsEqualTo,omitempty"`
+	IsGreaterThanOrEqualTo *IsGreaterThanOrEqualTo `xml:"http://schemas.microsoft.com/exchange/services/2006/types IsGreaterThanOrEqualTo,omitempty"`
+	IsLessThan             *IsLessThan             `xml:"http://schemas.microsoft.com/exchange/services/2006/types IsLessThan,omitempty"`
+	And                    *And                    `xml:"http://schemas.microsoft.com/exchange/services/2006/types And,omitempty"`
+}
+
+// IsGreaterThanOrEqualTo and IsLessThan share the IsEqualTo shape.
+type (
+	IsGreaterThanOrEqualTo IsEqualTo
+	IsLessThan             IsEqualTo
+)
+
+// And is a conjunction of child expressions.
+type And struct {
+	IsEqualTo              []*IsEqualTo              `xml:"http://schemas.microsoft.com/exchange/services/2006/types IsEqualTo,omitempty"`
+	IsGreaterThanOrEqualTo []*IsGreaterThanOrEqualTo `xml:"http://schemas.microsoft.com/exchange/services/2006/types IsGreaterThanOrEqualTo,omitempty"`
+	IsLessThan             []*IsLessThan             `xml:"http://schemas.microsoft.com/exchange/services/2006/types IsLessThan,omitempty"`
+}
+
+func fieldIsConstant(fieldURI, value string) (*FieldURI, *FieldURIOrConstant) {
+	return &FieldURI{FieldURI: fieldURI}, &FieldURIOrConstant{Constant: &Constant{Value: value}}
+}
+
+// DateTimeReceivedRange restricts to items with from <= item:DateTimeReceived < to (UTC RFC3339).
+func DateTimeReceivedRange(from, to time.Time) *Restriction {
+	f, fc := fieldIsConstant("item:DateTimeReceived", from.UTC().Format(time.RFC3339))
+	l, lc := fieldIsConstant("item:DateTimeReceived", to.UTC().Format(time.RFC3339))
+	return &Restriction{And: &And{
+		IsGreaterThanOrEqualTo: []*IsGreaterThanOrEqualTo{{FieldURI: f, FieldURIOrConstant: fc}},
+		IsLessThan:             []*IsLessThan{{FieldURI: l, FieldURIOrConstant: lc}},
+	}}
 }
 
 type IsEqualTo struct {

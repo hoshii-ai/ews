@@ -50,10 +50,17 @@ type AttachmentId struct {
 }
 
 type MessageXml struct {
-	ExceptionType       string `xml:"ExceptionType"`
-	ExceptionCode       string `xml:"ExceptionCode"`
-	ExceptionServerName string `xml:"ExceptionServerName"`
-	ExceptionMessage    string `xml:"ExceptionMessage"`
+	ExceptionType       string            `xml:"ExceptionType"`
+	ExceptionCode       string            `xml:"ExceptionCode"`
+	ExceptionServerName string            `xml:"ExceptionServerName"`
+	ExceptionMessage    string            `xml:"ExceptionMessage"`
+	Values              []MessageXmlValue `xml:"Value"`
+}
+
+// MessageXmlValue is a <t:Value Name="...">...</t:Value> entry of MessageXml.
+type MessageXmlValue struct {
+	Name  string `xml:"Name,attr"`
+	Value string `xml:",chardata"`
 }
 
 type DistinguishedFolderId struct {
