@@ -1,0 +1,22 @@
+<FindItem xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" Traversal="Shallow">
+  <ItemShape xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <BaseShape xmlns="http://schemas.microsoft.com/exchange/services/2006/types">IdOnly</BaseShape>
+    <AdditionalProperties xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:DateTimeReceived"></FieldURI>
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:ParentFolderId"></FieldURI>
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="message:InternetMessageId"></FieldURI>
+    </AdditionalProperties>
+  </ItemShape>
+  <IndexedPageItemView xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" MaxEntriesReturned="100" Offset="0" BasePoint="Beginning"></IndexedPageItemView>
+  <Restriction xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <IsEqualTo xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+      <ExtendedFieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" PropertyTag="0x1035" PropertyType="String"></ExtendedFieldURI>
+      <FieldURIOrConstant xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+        <Constant xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Value="&lt;a@x&gt;"></Constant>
+      </FieldURIOrConstant>
+    </IsEqualTo>
+  </Restriction>
+  <ParentFolderIds xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <DistinguishedFolderId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Id="inbox"></DistinguishedFolderId>
+  </ParentFolderIds>
+</FindItem>
