@@ -1,0 +1,17 @@
+<FindFolder xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" Traversal="Deep">
+  <FolderShape xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <BaseShape xmlns="http://schemas.microsoft.com/exchange/services/2006/types">IdOnly</BaseShape>
+    <AdditionalProperties xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="folder:ParentFolderId"></FieldURI>
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="folder:DisplayName"></FieldURI>
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="folder:FolderClass"></FieldURI>
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="folder:TotalCount"></FieldURI>
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="folder:UnreadCount"></FieldURI>
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="folder:ChildFolderCount"></FieldURI>
+    </AdditionalProperties>
+  </FolderShape>
+  <IndexedPageFolderView xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" MaxEntriesReturned="500" Offset="0" BasePoint="Beginning"></IndexedPageFolderView>
+  <ParentFolderIds xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <DistinguishedFolderId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Id="msgfolderroot"></DistinguishedFolderId>
+  </ParentFolderIds>
+</FindFolder>

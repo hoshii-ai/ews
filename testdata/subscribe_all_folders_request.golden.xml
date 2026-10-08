@@ -1,0 +1,8 @@
+<Subscribe xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+  <StreamingSubscriptionRequest xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" SubscribeToAllFolders="true">
+    <EventTypes xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+      <EventType xmlns="http://schemas.microsoft.com/exchange/services/2006/types">NewMailEvent</EventType>
+      <EventType xmlns="http://schemas.microsoft.com/exchange/services/2006/types">CreatedEvent</EventType>
+    </EventTypes>
+  </StreamingSubscriptionRequest>
+</Subscribe>
