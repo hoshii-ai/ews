@@ -1,0 +1,17 @@
+<FindItem xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" Traversal="Associated">
+  <ItemShape xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <BaseShape xmlns="http://schemas.microsoft.com/exchange/services/2006/types">AllProperties</BaseShape>
+    <AdditionalProperties xmlns="http://schemas.microsoft.com/exchange/services/2006/types"></AdditionalProperties>
+  </ItemShape>
+  <Restriction xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <IsEqualTo xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:Subject"></FieldURI>
+      <FieldURIOrConstant xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+        <Constant xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Value="x"></Constant>
+      </FieldURIOrConstant>
+    </IsEqualTo>
+  </Restriction>
+  <ParentFolderIds xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <DistinguishedFolderId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Id="inbox"></DistinguishedFolderId>
+  </ParentFolderIds>
+</FindItem>

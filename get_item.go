@@ -1,8 +1,10 @@
 package ews
 
 import (
+	"encoding/base64"
 	"encoding/xml"
 	"errors"
+	"strings"
 )
 
 type GetItemRequest struct {
@@ -57,6 +59,26 @@ type GetItemResponseMessage struct {
 	ResponseClass ResponseClass `xml:"ResponseClass,attr"`
 	ResponseCode  string        `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ResponseCode"`
 	Items         Items         `xml:"http://schemas.microsoft.com/exchange/services/2006/messages Items"`
+}
+
+// MimeContent is the MIME stream of an item, returned when ItemShape.IncludeMimeContent is set.
+type MimeContent struct {
+	CharacterSet string `xml:"CharacterSet,attr"`
+	// Value is base64-encoded MIME.
+	Value string `xml:",chardata"`
+}
+
+// Decode returns the raw MIME bytes.
+func (m *MimeContent) Decode() ([]byte, error) {
+	if m == nil {
+		return nil, errors.New("ews: no MimeContent")
+	}
+	return base64.StdEncoding.DecodeString(strings.Join(strings.Fields(m.Value), ""))
+}
+
+// NewGetItemMimeShape returns an ItemShape that fetches the MIME content only (IdOnly + IncludeMimeContent).
+func NewGetItemMimeShape() *ItemShape {
+	return &ItemShape{BaseShape: BaseShapeIdOnly, IncludeMimeContent: true}
 }
 
 type GetItemBody struct {
