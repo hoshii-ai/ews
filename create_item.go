@@ -49,6 +49,7 @@ type SavedItemFolderId struct {
 }
 
 type Message struct {
+	MimeContent                  *MimeContent            `xml:"http://schemas.microsoft.com/exchange/services/2006/types MimeContent,omitempty"`
 	ItemId                       *ItemId                 `xml:"http://schemas.microsoft.com/exchange/services/2006/types ItemId,omitempty"`
 	ParentFolderId               *ParentFolderId         `xml:"http://schemas.microsoft.com/exchange/services/2006/types ParentFolderId,omitempty"`
 	Categories                   *Categories             `xml:"http://schemas.microsoft.com/exchange/services/2006/types Categories,omitempty"`
