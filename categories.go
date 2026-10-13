@@ -199,8 +199,13 @@ func formatOptionalCategoryTime(t *time.Time) string {
 	return formatCategoryTime(*t)
 }
 
+// parseCategoryTime accepts what Outlook writes (no zone, UTC, any fraction of a second)
+// and RFC 3339. An empty value is the zero time.
 func parseCategoryTime(s string) (time.Time, error) {
-	if t, err := time.ParseInLocation(categoryTimeLayout, s, time.UTC); err == nil {
+	if s == "" {
+		return time.Time{}, nil
+	}
+	if t, err := time.ParseInLocation("2006-01-02T15:04:05.999999999", s, time.UTC); err == nil {
 		return t, nil
 	}
 	return time.Parse(time.RFC3339Nano, s)
