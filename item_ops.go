@@ -11,9 +11,12 @@ import (
 // --- MoveItem ---
 
 type moveItemRequest struct {
-	XMLName    xml.Name   `xml:"http://schemas.microsoft.com/exchange/services/2006/messages MoveItem"`
-	ToFolderId folderRefs `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ToFolderId"`
-	ItemIds    ItemIds    `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ItemIds"`
+	XMLName xml.Name `xml:"http://schemas.microsoft.com/exchange/services/2006/messages MoveItem"`
+	// ReturnNewItemIds asks for the moved item's new id; without it Exchange 2013+
+	// answers Success with an empty Items element.
+	ReturnNewItemIds bool       `xml:"ReturnNewItemIds,attr"`
+	ToFolderId       folderRefs `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ToFolderId"`
+	ItemIds          ItemIds    `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ItemIds"`
 }
 
 type moveItemEnvelope struct {
@@ -35,6 +38,8 @@ type moveItemEnvelope struct {
 
 // MoveItem moves an item to another folder and returns the item's new id and
 // change key. to is a FolderRef with either a DistinguishedId or an Id.
+// A successful move is never an error: when the server reports no new id
+// (older servers, some cross-mailbox moves) the result is (nil, nil).
 func MoveItem(ctx context.Context, c ContextClient, item ItemId, to FolderRef, opts ...RequestOption) (*ItemId, error) {
 	if item.Id == "" {
 		return nil, errors.New("ews: MoveItem needs an item id")
@@ -43,8 +48,9 @@ func MoveItem(ctx context.Context, c ContextClient, item ItemId, to FolderRef, o
 		return nil, errors.New("ews: MoveItem needs a destination folder")
 	}
 	req := moveItemRequest{
-		ToFolderId: newFolderRefs([]FolderRef{to}),
-		ItemIds:    ItemIds{ItemId: []ItemId{item}},
+		ReturnNewItemIds: true,
+		ToFolderId:       newFolderRefs([]FolderRef{to}),
+		ItemIds:          ItemIds{ItemId: []ItemId{item}},
 	}
 	var env moveItemEnvelope
 	if err := call(ctx, c, &req, &env, opts); err != nil {
@@ -55,7 +61,7 @@ func MoveItem(ctx context.Context, c ContextClient, item ItemId, to FolderRef, o
 		return nil, err
 	}
 	if len(msg.Items.Item) == 0 || msg.Items.Item[0].ItemId.Id == "" {
-		return nil, errors.New("ews: MoveItem response has no item id")
+		return nil, nil
 	}
 	moved := msg.Items.Item[0].ItemId
 	return &moved, nil

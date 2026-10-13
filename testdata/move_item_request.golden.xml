@@ -1,4 +1,4 @@
-<MoveItem xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+<MoveItem xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" ReturnNewItemIds="true">
   <ToFolderId xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
     <FolderId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Id="AAFolder==" ChangeKey="CKF"></FolderId>
   </ToFolderId>

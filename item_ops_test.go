@@ -18,6 +18,7 @@ func TestMoveItem(t *testing.T) {
 	assert.Equal(t, &ItemId{Id: "AAMkNew==", ChangeKey: "CKNew"}, got)
 	assert.Equal(t, "a@example.com", (*reqs)[0].Header.Get("X-AnchorMailbox"))
 	golden(t, "move_item_request.golden.xml", bodyOf(t, (*bodies)[0], "MoveItem"))
+	assert.Contains(t, (*bodies)[0], `ReturnNewItemIds="true"`)
 
 	// distinguished destination
 	_, err = MoveItem(context.Background(), c, ItemId{Id: "AAMk1"}, FolderRef{DistinguishedId: "deleteditems"})
@@ -28,6 +29,14 @@ func TestMoveItem(t *testing.T) {
 	assert.Error(t, err)
 	_, err = MoveItem(context.Background(), c, ItemId{Id: "x"}, FolderRef{})
 	assert.Error(t, err)
+}
+
+func TestMoveItemSuccessWithoutNewId(t *testing.T) {
+	srv, _, _ := newServer(t, reply{200, fixture(t, "move_item_no_id.xml")})
+	c := NewContextClient(srv.URL, "u", "p", nil)
+	got, err := MoveItem(context.Background(), c, ItemId{Id: "AAMk1"}, FolderRef{Id: "AAFolder=="})
+	require.NoError(t, err)
+	assert.Nil(t, got)
 }
 
 func TestMoveItemServerBusy(t *testing.T) {
