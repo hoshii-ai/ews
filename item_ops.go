@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"errors"
+	"fmt"
 )
 
 // --- MoveItem ---
@@ -69,15 +70,97 @@ func FindItemByInternetMessageID(ctx context.Context, c ContextClient, folder Fo
 	if id == "" {
 		return nil, errors.New("ews: FindItemByInternetMessageID needs a message id")
 	}
-	restriction := &Restriction{IsEqualTo: &IsEqualTo{
-		ExtendedFieldURI:   &ExtendedFieldURI{PropertyTag: PropertyTagInternetMessageId, PropertyType: PropertyTypeString},
-		FieldURIOrConstant: &FieldURIOrConstant{Constant: &Constant{Value: id}},
-	}}
-	res, err := FindItemsPage(ctx, c, folder, FindItemsOptions{Restriction: restriction}, opts...)
+	res, err := FindItemsPage(ctx, c, folder, FindItemsOptions{Restriction: internetMessageIDRestriction(id)}, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return res.Items, nil
+}
+
+// --- FindItemsByInternetMessageID ---
+
+// FolderItems is one folder's result of FindItemsByInternetMessageID. Err is
+// that folder's own response error (e.g. ErrorFolderNotFound); the other
+// folders are still answered.
+type FolderItems struct {
+	Folder FolderRef
+	Items  []FoundItem
+	Err    error
+}
+
+// FindItemsByInternetMessageID looks up id in every folder with one FindItem
+// request. FindItem has no Deep traversal, but it takes several parent folders
+// and answers one response message per folder. The result follows the
+// serialized request order, which lists distinguished folders before folder ids.
+func FindItemsByInternetMessageID(ctx context.Context, c ContextClient, folders []FolderRef, id string, opts ...RequestOption) ([]FolderItems, error) {
+	if id == "" {
+		return nil, errors.New("ews: FindItemsByInternetMessageID needs a message id")
+	}
+	for _, f := range folders {
+		if f.isZero() {
+			return nil, errors.New("ews: FindItemsByInternetMessageID needs non-empty folders")
+		}
+	}
+	if len(folders) == 0 {
+		return nil, errors.New("ews: FindItemsByInternetMessageID needs a folder")
+	}
+	refs := newFolderRefs(folders)
+	// The responses follow the serialized order, so read it back from refs rather than assume it.
+	ordered := make([]FolderRef, 0, len(folders))
+	for _, d := range refs.DistinguishedFolderId {
+		ordered = append(ordered, FolderRef{DistinguishedId: d.Id})
+	}
+	for _, f := range refs.FolderId {
+		ordered = append(ordered, FolderRef{Id: f.Id, ChangeKey: f.ChangeKey})
+	}
+
+	req := findItemsPageRequest{
+		Traversal: string(FindItemTraversalShallow),
+		ItemShape: ItemShape{BaseShape: BaseShapeIdOnly, AdditionalProperties: &AdditionalProperties{FieldURI: []FieldURI{
+			{FieldURI: "item:DateTimeReceived"},
+			{FieldURI: "item:ParentFolderId"},
+			{FieldURI: "message:InternetMessageId"},
+		}}},
+		View:            indexedPageItemView{MaxEntriesReturned: defaultFindItemsPage, BasePoint: "Beginning"},
+		Restriction:     internetMessageIDRestriction(id),
+		ParentFolderIds: refs,
+	}
+	var env findItemsPageEnvelope
+	if err := call(ctx, c, &req, &env, opts); err != nil {
+		return nil, err
+	}
+	msgs := env.Body.Response.Messages.Message
+	// A request-level failure (ErrorServerBusy, a server refusing several folders) is one error message.
+	if len(msgs) == 1 && len(ordered) > 1 {
+		if err := msgs[0].err(); err != nil {
+			return nil, err
+		}
+	}
+	if len(msgs) != len(ordered) {
+		return nil, fmt.Errorf("ews: FindItemsByInternetMessageID asked %d folders, got %d response messages", len(ordered), len(msgs))
+	}
+
+	res := make([]FolderItems, len(ordered))
+	for i, msg := range msgs {
+		res[i].Folder = ordered[i]
+		if err := msg.err(); err != nil {
+			res[i].Err = err
+			continue
+		}
+		items, err := msg.foundItems()
+		if err != nil {
+			return nil, err
+		}
+		res[i].Items = items
+	}
+	return res, nil
+}
+
+func internetMessageIDRestriction(id string) *Restriction {
+	return &Restriction{IsEqualTo: &IsEqualTo{
+		ExtendedFieldURI:   &ExtendedFieldURI{PropertyTag: PropertyTagInternetMessageId, PropertyType: PropertyTypeString},
+		FieldURIOrConstant: &FieldURIOrConstant{Constant: &Constant{Value: id}},
+	}}
 }
 
 // --- SendMIME ---

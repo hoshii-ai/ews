@@ -87,22 +87,25 @@ type foundItemXML struct {
 	InternetMessageId string  `xml:"http://schemas.microsoft.com/exchange/services/2006/types InternetMessageId"`
 }
 
+type findItemsPageMessage struct {
+	responseMessage
+	RootFolder struct {
+		IndexedPagingOffset     *int `xml:"IndexedPagingOffset,attr"`
+		TotalItemsInView        int  `xml:"TotalItemsInView,attr"`
+		IncludesLastItemInRange bool `xml:"IncludesLastItemInRange,attr"`
+		Items                   struct {
+			Item []foundItemXML `xml:",any"`
+		} `xml:"http://schemas.microsoft.com/exchange/services/2006/types Items"`
+	} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages RootFolder"`
+}
+
+// findItemsPageEnvelope holds one response message per parent folder, in request order.
 type findItemsPageEnvelope struct {
 	Header serverVersionHeader `xml:"Header"`
 	Body   struct {
 		Response struct {
 			Messages struct {
-				Message struct {
-					responseMessage
-					RootFolder struct {
-						IndexedPagingOffset     *int `xml:"IndexedPagingOffset,attr"`
-						TotalItemsInView        int  `xml:"TotalItemsInView,attr"`
-						IncludesLastItemInRange bool `xml:"IncludesLastItemInRange,attr"`
-						Items                   struct {
-							Item []foundItemXML `xml:",any"`
-						} `xml:"http://schemas.microsoft.com/exchange/services/2006/types Items"`
-					} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages RootFolder"`
-				} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages FindItemResponseMessage"`
+				Message []findItemsPageMessage `xml:"http://schemas.microsoft.com/exchange/services/2006/messages FindItemResponseMessage"`
 			} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ResponseMessages"`
 		} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages FindItemResponse"`
 	} `xml:"Body"`
@@ -162,19 +165,36 @@ func FindItemsPage(ctx context.Context, c ContextClient, folder FolderRef, o Fin
 	if err := call(ctx, c, &req, &env, opts); err != nil {
 		return nil, err
 	}
-	msg := env.Body.Response.Messages.Message
+	if len(env.Body.Response.Messages.Message) == 0 {
+		return nil, errors.New("ews: FindItemsPage response has no response message")
+	}
+	msg := env.Body.Response.Messages.Message[0]
 	if err := msg.err(); err != nil {
 		return nil, err
 	}
 
+	items, err := msg.foundItems()
+	if err != nil {
+		return nil, err
+	}
 	root := msg.RootFolder
 	res := &FindItemsPageResult{
 		TotalItemsInView:        root.TotalItemsInView,
 		IncludesLastItemInRange: root.IncludesLastItemInRange,
 		ServerVersionInfo:       env.Header.ServerVersionInfo,
-		Items:                   make([]FoundItem, 0, len(root.Items.Item)),
+		Items:                   items,
 	}
-	for _, it := range root.Items.Item {
+	if root.IndexedPagingOffset != nil {
+		res.NextOffset = *root.IndexedPagingOffset
+	} else {
+		res.NextOffset = o.Offset + len(res.Items)
+	}
+	return res, nil
+}
+
+func (m findItemsPageMessage) foundItems() ([]FoundItem, error) {
+	items := make([]FoundItem, 0, len(m.RootFolder.Items.Item))
+	for _, it := range m.RootFolder.Items.Item {
 		fi := FoundItem{
 			ItemId:            it.ItemId.Id,
 			ChangeKey:         it.ItemId.ChangeKey,
@@ -190,12 +210,7 @@ func FindItemsPage(ctx context.Context, c ContextClient, folder FolderRef, o Fin
 			}
 			fi.DateTimeReceived = t
 		}
-		res.Items = append(res.Items, fi)
+		items = append(items, fi)
 	}
-	if root.IndexedPagingOffset != nil {
-		res.NextOffset = *root.IndexedPagingOffset
-	} else {
-		res.NextOffset = o.Offset + len(res.Items)
-	}
-	return res, nil
+	return items, nil
 }

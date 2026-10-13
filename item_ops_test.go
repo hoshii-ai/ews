@@ -59,6 +59,62 @@ func TestFindItemByInternetMessageID(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestFindItemsByInternetMessageID(t *testing.T) {
+	srv, _, bodies := newServer(t, reply{200, fixture(t, "find_msgid_many_folders.xml")})
+	c := NewContextClient(srv.URL, "u", "p", nil)
+	// The folder ids are requested after the distinguished folders, whatever the input order.
+	res, err := FindItemsByInternetMessageID(context.Background(), c, []FolderRef{
+		{Id: "AAGone=="}, {DistinguishedId: "inbox"}, {Id: "AAOrders=="},
+	}, "<a@x>")
+	require.NoError(t, err)
+	require.Len(t, res, 3)
+
+	assert.Equal(t, FolderRef{DistinguishedId: "inbox"}, res[0].Folder)
+	assert.NoError(t, res[0].Err)
+	assert.Empty(t, res[0].Items)
+
+	assert.Equal(t, FolderRef{Id: "AAGone=="}, res[1].Folder)
+	var re *ResponseError
+	require.True(t, errors.As(res[1].Err, &re))
+	assert.Equal(t, "ErrorFolderNotFound", re.Code)
+
+	assert.Equal(t, FolderRef{Id: "AAOrders=="}, res[2].Folder)
+	require.NoError(t, res[2].Err)
+	require.Len(t, res[2].Items, 1)
+	assert.Equal(t, "AAMk9", res[2].Items[0].ItemId)
+	assert.Equal(t, "AAOrders==", res[2].Items[0].ParentFolderId)
+
+	golden(t, "find_by_message_id_many_folders_request.golden.xml", bodyOf(t, (*bodies)[0], "FindItem"))
+}
+
+func TestFindItemsByInternetMessageIDRejectsAResponseCountMismatch(t *testing.T) {
+	srv, _, _ := newServer(t, reply{200, fixture(t, "find_msgid_match.xml")})
+	c := NewContextClient(srv.URL, "u", "p", nil)
+	_, err := FindItemsByInternetMessageID(context.Background(), c, []FolderRef{{DistinguishedId: "inbox"}, {Id: "AAOrders=="}}, "<a@x>")
+	assert.Error(t, err)
+}
+
+func TestFindItemsByInternetMessageIDReturnsARequestLevelError(t *testing.T) {
+	srv, _, _ := newServer(t, reply{200, fixture(t, "find_error_server_busy.xml")})
+	c := NewContextClient(srv.URL, "u", "p", nil)
+	_, err := FindItemsByInternetMessageID(context.Background(), c, []FolderRef{{DistinguishedId: "inbox"}, {Id: "AAOrders=="}}, "<a@x>")
+	var re *ResponseError
+	require.True(t, errors.As(err, &re), err)
+	assert.True(t, re.IsServerBusy())
+	assert.Greater(t, re.BackOffMilliseconds, 0)
+}
+
+func TestFindItemsByInternetMessageIDValidatesItsInput(t *testing.T) {
+	c := NewContextClient("http://unused", "u", "p", nil)
+	ctx := context.Background()
+	_, err := FindItemsByInternetMessageID(ctx, c, []FolderRef{{DistinguishedId: "inbox"}}, "")
+	assert.Error(t, err)
+	_, err = FindItemsByInternetMessageID(ctx, c, nil, "<a@x>")
+	assert.Error(t, err)
+	_, err = FindItemsByInternetMessageID(ctx, c, []FolderRef{{}}, "<a@x>")
+	assert.Error(t, err)
+}
+
 func TestSendMIME(t *testing.T) {
 	srv, reqs, bodies := newServer(t, reply{200, fixture(t, "create_item_mime_ok.xml")}, reply{200, fixture(t, "create_item_mime_noid.xml")})
 	c := NewContextClient(srv.URL, "u", "p", nil)
