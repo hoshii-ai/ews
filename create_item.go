@@ -1,6 +1,7 @@
 package ews
 
 import (
+	"context"
 	"encoding/xml"
 	"strconv"
 	"time"
@@ -215,6 +216,45 @@ func CreateMessageItem(c Client, message Message, config CreateItemRequestConfig
 	}
 
 	return messages[0].ItemId, nil
+}
+
+// CreateMessageItemContext is CreateMessageItem with a context and per-request
+// options (e.g. WithAnchorMailbox). ResponseClass=Error is returned as
+// *ResponseError.
+func CreateMessageItemContext(ctx context.Context, c ContextClient, message Message, config CreateItemRequestConfig, opts ...RequestOption) (*ItemId, error) {
+	req, err := NewCreateItemRequest(message, config)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create create item request")
+	}
+	var env createItemContextEnvelope
+	if err := call(ctx, c, req, &env, opts); err != nil {
+		return nil, err
+	}
+	msg := env.Body.Response.Messages.Message
+	if err := msg.err(); err != nil {
+		return nil, err
+	}
+	if len(msg.Items.Message) != 1 {
+		return nil, errors.New("expected 1 message, got " + strconv.Itoa(len(msg.Items.Message)))
+	}
+	return msg.Items.Message[0].ItemId, nil
+}
+
+type createItemContextEnvelope struct {
+	Body struct {
+		Response struct {
+			Messages struct {
+				Message struct {
+					responseMessage
+					Items struct {
+						Message []struct {
+							ItemId *ItemId `xml:"http://schemas.microsoft.com/exchange/services/2006/types ItemId"`
+						} `xml:"http://schemas.microsoft.com/exchange/services/2006/types Message"`
+					} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages Items"`
+				} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages CreateItemResponseMessage"`
+			} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ResponseMessages"`
+		} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages CreateItemResponse"`
+	} `xml:"Body"`
 }
 
 // CreateCalendarItem

@@ -15,46 +15,12 @@ func SendEmail(
 	subject,
 	body string,
 	attachments ...ews.FileAttachment) (*ews.ItemId, error) {
-	if len(to) == 0 {
-		return nil, errors.New("to is required")
-	}
-	m := ews.Message{
-		Subject: utils.Ptr(subject),
-		Body: &ews.Body{
-			BodyType: "HTML",
-			Body:     []byte(body),
-		},
-		ToRecipients: &ews.XMailbox{
-			Mailbox: make([]ews.Mailbox, len(to)),
-		},
-	}
-	for i, addr := range to {
-		m.ToRecipients.Mailbox[i].EmailAddress = addr
-	}
-	if len(cc) > 0 {
-		m.CcRecipients = &ews.XMailbox{
-			Mailbox: make([]ews.Mailbox, len(cc)),
-		}
-		for i, addr := range cc {
-			m.CcRecipients.Mailbox[i].EmailAddress = addr
-		}
-	}
-	if len(bcc) > 0 {
-		m.BccRecipients = &ews.XMailbox{
-			Mailbox: make([]ews.Mailbox, len(bcc)),
-		}
-		for i, addr := range bcc {
-			m.BccRecipients.Mailbox[i].EmailAddress = addr
-		}
+	m, err := buildEmailMessage(to, cc, bcc, subject, body, attachments)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(attachments) > 0 {
-		m.Attachments = &ews.Attachments{
-			FileAttachment: attachments,
-		}
-	}
-
-	itemId, err := sendEmailWithSaveThenSend(c, m)
+	itemId, err := sendEmailWithSaveThenSend(c, *m)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send email")
 	}
@@ -95,4 +61,46 @@ func SendEmailWithItemId(c ews.Client, itemId *ews.ItemId) error {
 	}
 
 	return nil
+}
+
+func buildEmailMessage(to, cc, bcc []string, subject, body string, attachments []ews.FileAttachment) (*ews.Message, error) {
+	if len(to) == 0 {
+		return nil, errors.New("to is required")
+	}
+	m := ews.Message{
+		Subject: utils.Ptr(subject),
+		Body: &ews.Body{
+			BodyType: "HTML",
+			Body:     []byte(body),
+		},
+		ToRecipients: &ews.XMailbox{
+			Mailbox: make([]ews.Mailbox, len(to)),
+		},
+	}
+	for i, addr := range to {
+		m.ToRecipients.Mailbox[i].EmailAddress = addr
+	}
+	if len(cc) > 0 {
+		m.CcRecipients = &ews.XMailbox{
+			Mailbox: make([]ews.Mailbox, len(cc)),
+		}
+		for i, addr := range cc {
+			m.CcRecipients.Mailbox[i].EmailAddress = addr
+		}
+	}
+	if len(bcc) > 0 {
+		m.BccRecipients = &ews.XMailbox{
+			Mailbox: make([]ews.Mailbox, len(bcc)),
+		}
+		for i, addr := range bcc {
+			m.BccRecipients.Mailbox[i].EmailAddress = addr
+		}
+	}
+
+	if len(attachments) > 0 {
+		m.Attachments = &ews.Attachments{
+			FileAttachment: attachments,
+		}
+	}
+	return &m, nil
 }
