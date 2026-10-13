@@ -1,0 +1,6 @@
+<ConvertId xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" DestinationFormat="HexEntryId">
+  <SourceIds xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <AlternateId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Format="EwsId" Id="AQMkOne==" Mailbox="a@example.com"></AlternateId>
+    <AlternateId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Format="EwsId" Id="bad" Mailbox="a@example.com"></AlternateId>
+  </SourceIds>
+</ConvertId>
