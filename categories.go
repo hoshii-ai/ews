@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,7 +49,7 @@ const (
 
 // CategoryList represents the <categories> root element
 type CategoryList struct {
-	ItemId           ItemId     // This itemID is not present in the XML. We just store it here to make it easier to update the item.
+	ItemId           ItemId     `xml:"-"` // This itemID is not present in the XML. We just store it here to make it easier to update the item.
 	XMLName          xml.Name   `xml:"categories"`
 	Xmlns            string     `xml:"xmlns,attr"`
 	Categories       []Category `xml:"category"`
@@ -79,7 +80,7 @@ type Category struct {
 func (cl *CategoryList) AddCategory(name string, color ColorType) error {
 	// Check uniqueness
 	for _, c := range cl.Categories {
-		if c.Name == name {
+		if strings.EqualFold(c.Name, name) {
 			return fmt.Errorf("category with name %q already exists", name)
 		}
 	}
@@ -91,13 +92,24 @@ func (cl *CategoryList) AddCategory(name string, color ColorType) error {
 	now := time.Now().UTC()
 
 	// Append
+	never := categoryTimeNever
+	usageCount := uint(0)
+	renameOnFirstUse := 0
 	cl.Categories = append(cl.Categories, Category{
-		Name:             name,
-		Color:            color,
-		KeyboardShortcut: 0, // None
-		LastTimeUsed:     now,
-		LastSessionUsed:  cl.LastSavedSession + 1,
-		GUID:             newGuid,
+		Name:                 name,
+		Color:                color,
+		KeyboardShortcut:     0, // None
+		UsageCount:           &usageCount,
+		LastTimeUsedNotes:    &never,
+		LastTimeUsedJournal:  &never,
+		LastTimeUsedContacts: &never,
+		LastTimeUsedTasks:    &never,
+		LastTimeUsedCalendar: &never,
+		LastTimeUsedMail:     &never,
+		LastTimeUsed:         now,
+		LastSessionUsed:      cl.LastSavedSession + 1,
+		GUID:                 newGuid,
+		RenameOnFirstUse:     &renameOnFirstUse,
 	})
 
 	// Update list metadata
@@ -111,7 +123,7 @@ func (cl *CategoryList) AddCategory(name string, color ColorType) error {
 func (cl *CategoryList) DeleteCategory(name string) error {
 	idx := -1
 	for i, c := range cl.Categories {
-		if c.Name == name {
+		if strings.EqualFold(c.Name, name) {
 			idx = i
 			break
 		}
@@ -169,4 +181,156 @@ func CategoryListFromBase64(b64 string) (*CategoryList, error) {
 	}
 
 	return &cl, nil
+}
+
+// Outlook writes and expects [MS-OXOCFG] dateTimes: UTC, millisecond precision, no zone designator.
+const categoryTimeLayout = "2006-01-02T15:04:05.000"
+
+var categoryTimeNever = time.Date(1601, 1, 1, 0, 0, 0, 0, time.UTC)
+
+func formatCategoryTime(t time.Time) string {
+	return t.UTC().Format(categoryTimeLayout)
+}
+
+func formatOptionalCategoryTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return formatCategoryTime(*t)
+}
+
+func parseCategoryTime(s string) (time.Time, error) {
+	if t, err := time.ParseInLocation(categoryTimeLayout, s, time.UTC); err == nil {
+		return t, nil
+	}
+	return time.Parse(time.RFC3339Nano, s)
+}
+
+func parseOptionalCategoryTime(s string) (*time.Time, error) {
+	if s == "" {
+		return nil, nil
+	}
+	t, err := parseCategoryTime(s)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+type categoryListWire struct {
+	XMLName          xml.Name       `xml:"categories"`
+	Default          string         `xml:"default,attr"`
+	LastSavedSession int            `xml:"lastSavedSession,attr"`
+	LastSavedTime    string         `xml:"lastSavedTime,attr"`
+	Xmlns            string         `xml:"xmlns,attr"`
+	Categories       []categoryWire `xml:"category"`
+}
+
+type categoryWire struct {
+	Name                 string    `xml:"name,attr"`
+	Color                ColorType `xml:"color,attr"`
+	KeyboardShortcut     uint      `xml:"keyboardShortcut,attr"`
+	UsageCount           *uint     `xml:"usageCount,attr,omitempty"`
+	LastTimeUsedNotes    string    `xml:"lastTimeUsedNotes,attr,omitempty"`
+	LastTimeUsedJournal  string    `xml:"lastTimeUsedJournal,attr,omitempty"`
+	LastTimeUsedContacts string    `xml:"lastTimeUsedContacts,attr,omitempty"`
+	LastTimeUsedTasks    string    `xml:"lastTimeUsedTasks,attr,omitempty"`
+	LastTimeUsedCalendar string    `xml:"lastTimeUsedCalendar,attr,omitempty"`
+	LastTimeUsedMail     string    `xml:"lastTimeUsedMail,attr,omitempty"`
+	LastTimeUsed         string    `xml:"lastTimeUsed,attr"`
+	LastSessionUsed      int       `xml:"lastSessionUsed,attr"`
+	GUID                 string    `xml:"guid,attr"`
+	RenameOnFirstUse     *int      `xml:"renameOnFirstUse,attr,omitempty"`
+}
+
+func (cl CategoryList) MarshalXML(e *xml.Encoder, _ xml.StartElement) error {
+	wire := categoryListWire{
+		Default:          cl.Default,
+		LastSavedSession: cl.LastSavedSession,
+		LastSavedTime:    formatCategoryTime(cl.LastSavedTime),
+		Xmlns:            xlmns,
+		Categories:       make([]categoryWire, 0, len(cl.Categories)),
+	}
+	for _, c := range cl.Categories {
+		wire.Categories = append(wire.Categories, categoryWire{
+			Name:                 c.Name,
+			Color:                c.Color,
+			KeyboardShortcut:     c.KeyboardShortcut,
+			UsageCount:           c.UsageCount,
+			LastTimeUsedNotes:    formatOptionalCategoryTime(c.LastTimeUsedNotes),
+			LastTimeUsedJournal:  formatOptionalCategoryTime(c.LastTimeUsedJournal),
+			LastTimeUsedContacts: formatOptionalCategoryTime(c.LastTimeUsedContacts),
+			LastTimeUsedTasks:    formatOptionalCategoryTime(c.LastTimeUsedTasks),
+			LastTimeUsedCalendar: formatOptionalCategoryTime(c.LastTimeUsedCalendar),
+			LastTimeUsedMail:     formatOptionalCategoryTime(c.LastTimeUsedMail),
+			LastTimeUsed:         formatCategoryTime(c.LastTimeUsed),
+			LastSessionUsed:      c.LastSessionUsed,
+			GUID:                 c.GUID,
+			RenameOnFirstUse:     c.RenameOnFirstUse,
+		})
+	}
+	return e.Encode(wire)
+}
+
+func (cl *CategoryList) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var wire categoryListWire
+	if err := d.DecodeElement(&wire, &start); err != nil {
+		return err
+	}
+	lastSavedTime, err := parseCategoryTime(wire.LastSavedTime)
+	if err != nil {
+		return fmt.Errorf("lastSavedTime: %w", err)
+	}
+	*cl = CategoryList{
+		ItemId:           cl.ItemId,
+		XMLName:          wire.XMLName,
+		Xmlns:            xlmns,
+		Default:          wire.Default,
+		LastSavedSession: wire.LastSavedSession,
+		LastSavedTime:    lastSavedTime,
+		Categories:       make([]Category, 0, len(wire.Categories)),
+	}
+	seenGUIDs := make(map[string]struct{}, len(wire.Categories))
+	seenNames := make(map[string]struct{}, len(wire.Categories))
+	for _, w := range wire.Categories {
+		// Outlook stops rendering colours when the list repeats an entry, so keep the first of each.
+		guid, name := strings.ToLower(w.GUID), strings.ToLower(w.Name)
+		if _, dup := seenGUIDs[guid]; dup && guid != "" {
+			continue
+		}
+		if _, dup := seenNames[name]; dup {
+			continue
+		}
+		seenGUIDs[guid] = struct{}{}
+		seenNames[name] = struct{}{}
+		c := Category{
+			Name:             w.Name,
+			Color:            w.Color,
+			KeyboardShortcut: w.KeyboardShortcut,
+			UsageCount:       w.UsageCount,
+			LastSessionUsed:  w.LastSessionUsed,
+			GUID:             w.GUID,
+			RenameOnFirstUse: w.RenameOnFirstUse,
+		}
+		if c.LastTimeUsed, err = parseCategoryTime(w.LastTimeUsed); err != nil {
+			return fmt.Errorf("category %q lastTimeUsed: %w", w.Name, err)
+		}
+		for _, f := range []struct {
+			dst **time.Time
+			src string
+		}{
+			{&c.LastTimeUsedNotes, w.LastTimeUsedNotes},
+			{&c.LastTimeUsedJournal, w.LastTimeUsedJournal},
+			{&c.LastTimeUsedContacts, w.LastTimeUsedContacts},
+			{&c.LastTimeUsedTasks, w.LastTimeUsedTasks},
+			{&c.LastTimeUsedCalendar, w.LastTimeUsedCalendar},
+			{&c.LastTimeUsedMail, w.LastTimeUsedMail},
+		} {
+			if *f.dst, err = parseOptionalCategoryTime(f.src); err != nil {
+				return fmt.Errorf("category %q: %w", w.Name, err)
+			}
+		}
+		cl.Categories = append(cl.Categories, c)
+	}
+	return nil
 }
