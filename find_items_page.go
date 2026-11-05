@@ -10,11 +10,11 @@ import (
 
 const (
 	defaultFindItemsPage = 100
-	// MaxFindItemsPage is the largest page size FindItemsPage requests.
+	// MaxFindItemsPage is the largest page size FindItemsPage and FindItemsPages request.
 	MaxFindItemsPage = 1000
 )
 
-// FindItemsOptions tunes FindItemsPage.
+// FindItemsOptions tunes FindItemsPage and FindItemsPages.
 type FindItemsOptions struct {
 	Restriction *Restriction
 	// Offset and MaxEntries drive IndexedPageItemView (BasePoint=Beginning).
@@ -46,12 +46,29 @@ type FoundItem struct {
 
 // FindItemsPageResult is one page of FindItemsPage.
 type FindItemsPageResult struct {
-	Items                   []FoundItem
-	TotalItemsInView        int
+	Items []FoundItem
+	// TotalItemsInView is not a count once the offset is past the folder's
+	// last item: Exchange then echoes the offset.
+	TotalItemsInView int
+	// IncludesLastItemInRange can stay false when a page ends exactly on the
+	// folder's last item. Use Done to stop paging.
 	IncludesLastItemInRange bool
+	// Done reports that the page came back shorter than the MaxEntries
+	// requested and IncludesLastItemInRange is true, so the folder has no item
+	// past it. A short page without IncludesLastItemInRange was cut by the
+	// server (for example under a find count throttling limit) and is not Done.
+	Done bool
 	// NextOffset is the offset to request the next page (IndexedPagingOffset).
 	NextOffset        int
 	ServerVersionInfo ServerVersionInfo
+}
+
+// FolderItemsPage is one folder's result of FindItemsPages: its Page, or Err
+// when the folder's own response message is an error (e.g. ErrorFolderNotFound).
+type FolderItemsPage struct {
+	Folder FolderRef
+	Page   *FindItemsPageResult
+	Err    error
 }
 
 type indexedPageItemView struct {
@@ -114,11 +131,31 @@ type findItemsPageEnvelope struct {
 // FindItemsPage lists one page of items (Shallow traversal, IdOnly shape plus
 // DateTimeReceived, ParentFolderId and InternetMessageId) in folder.
 func FindItemsPage(ctx context.Context, c ContextClient, folder FolderRef, o FindItemsOptions, opts ...RequestOption) (*FindItemsPageResult, error) {
-	if folder.isZero() {
-		return nil, errors.New("ews: FindItemsPage needs a folder")
+	pages, err := FindItemsPages(ctx, c, []FolderRef{folder}, o, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pages[0].Page, nil
+}
+
+// FindItemsPages lists one page of items in each folder with one FindItem
+// request. Exchange answers one response message per parent folder, each sorted
+// and paged on its own and never merged: the restriction, the sort and the
+// offset apply to every folder, so the request returns page k of each folder.
+// The result follows the order of folders. A folder whose response message is
+// an error carries it in Err and the others keep their page; the call fails
+// only when the request fails as a whole or every folder failed.
+func FindItemsPages(ctx context.Context, c ContextClient, folders []FolderRef, o FindItemsOptions, opts ...RequestOption) ([]FolderItemsPage, error) {
+	if len(folders) == 0 {
+		return nil, errors.New("ews: FindItemsPages needs a folder")
+	}
+	for _, f := range folders {
+		if f.isZero() {
+			return nil, errors.New("ews: FindItemsPages needs non-empty folders")
+		}
 	}
 	if o.Offset < 0 {
-		return nil, errors.New("ews: FindItemsPage offset must not be negative")
+		return nil, errors.New("ews: FindItemsPages offset must not be negative")
 	}
 	max := o.MaxEntries
 	if max <= 0 {
@@ -146,7 +183,7 @@ func FindItemsPage(ctx context.Context, c ContextClient, folder FolderRef, o Fin
 		ItemShape:       ItemShape{BaseShape: BaseShapeIdOnly, AdditionalProperties: props},
 		View:            indexedPageItemView{MaxEntriesReturned: max, Offset: o.Offset, BasePoint: "Beginning"},
 		Restriction:     o.Restriction,
-		ParentFolderIds: newFolderRefs([]FolderRef{folder}),
+		ParentFolderIds: newFolderRefs(folders),
 	}
 	if o.Mailbox != "" {
 		for i := range req.ParentFolderIds.DistinguishedFolderId {
@@ -165,29 +202,76 @@ func FindItemsPage(ctx context.Context, c ContextClient, folder FolderRef, o Fin
 	if err := call(ctx, c, &req, &env, opts); err != nil {
 		return nil, err
 	}
-	if len(env.Body.Response.Messages.Message) == 0 {
-		return nil, errors.New("ews: FindItemsPage response has no response message")
-	}
-	msg := env.Body.Response.Messages.Message[0]
-	if err := msg.err(); err != nil {
+	msgs := env.Body.Response.Messages.Message
+	if err := checkFolderResponses(msgs, len(folders)); err != nil {
 		return nil, err
 	}
 
-	items, err := msg.foundItems()
+	// The request lists distinguished folders before folder ids, and the response messages follow it.
+	nextDistinguished, nextId := 0, len(req.ParentFolderIds.DistinguishedFolderId)
+	pages := make([]FolderItemsPage, len(folders))
+	var firstErr error
+	failed := 0
+	for i, f := range folders {
+		var msg findItemsPageMessage
+		if f.DistinguishedId != "" {
+			msg, nextDistinguished = msgs[nextDistinguished], nextDistinguished+1
+		} else {
+			msg, nextId = msgs[nextId], nextId+1
+		}
+		pages[i].Folder = f
+		if err := msg.err(); err != nil {
+			pages[i].Err = err
+			if firstErr == nil {
+				firstErr = err
+			}
+			failed++
+			continue
+		}
+		page, err := msg.page(o.Offset, max, env.Header.ServerVersionInfo)
+		if err != nil {
+			return nil, err
+		}
+		pages[i].Page = page
+	}
+	if failed == len(folders) {
+		return nil, firstErr
+	}
+	return pages, nil
+}
+
+// checkFolderResponses fails on a request-level error, which is one error
+// message for several folders (ErrorServerBusy, a server refusing several
+// folders), and on a response count that does not match the n folders asked.
+func checkFolderResponses(msgs []findItemsPageMessage, n int) error {
+	if len(msgs) == 1 && n > 1 {
+		if err := msgs[0].err(); err != nil {
+			return err
+		}
+	}
+	if len(msgs) != n {
+		return fmt.Errorf("ews: FindItem asked %d folders, got %d response messages", n, len(msgs))
+	}
+	return nil
+}
+
+func (m findItemsPageMessage) page(offset, max int, version ServerVersionInfo) (*FindItemsPageResult, error) {
+	items, err := m.foundItems()
 	if err != nil {
 		return nil, err
 	}
-	root := msg.RootFolder
+	root := m.RootFolder
 	res := &FindItemsPageResult{
 		TotalItemsInView:        root.TotalItemsInView,
 		IncludesLastItemInRange: root.IncludesLastItemInRange,
-		ServerVersionInfo:       env.Header.ServerVersionInfo,
+		Done:                    len(items) < max && root.IncludesLastItemInRange,
+		ServerVersionInfo:       version,
 		Items:                   items,
 	}
 	if root.IndexedPagingOffset != nil {
 		res.NextOffset = *root.IndexedPagingOffset
 	} else {
-		res.NextOffset = o.Offset + len(res.Items)
+		res.NextOffset = offset + len(items)
 	}
 	return res, nil
 }

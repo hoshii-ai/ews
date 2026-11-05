@@ -1,0 +1,33 @@
+<FindItem xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" Traversal="Shallow">
+  <ItemShape xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <BaseShape xmlns="http://schemas.microsoft.com/exchange/services/2006/types">IdOnly</BaseShape>
+    <AdditionalProperties xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:DateTimeReceived"></FieldURI>
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:ParentFolderId"></FieldURI>
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="message:InternetMessageId"></FieldURI>
+    </AdditionalProperties>
+  </ItemShape>
+  <IndexedPageItemView xmlns="http://schemas.microsoft.com/exchange/services/2006/messages" MaxEntriesReturned="5" Offset="5" BasePoint="Beginning"></IndexedPageItemView>
+  <Restriction xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <IsGreaterThanOrEqualTo xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:DateTimeReceived"></FieldURI>
+      <FieldURIOrConstant xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+        <Constant xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Value="2026-10-01T14:00:00Z"></Constant>
+      </FieldURIOrConstant>
+    </IsGreaterThanOrEqualTo>
+  </Restriction>
+  <SortOrder xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <FieldOrder xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Order="Descending">
+      <FieldURI xmlns="http://schemas.microsoft.com/exchange/services/2006/types" FieldURI="item:DateTimeReceived"></FieldURI>
+    </FieldOrder>
+  </SortOrder>
+  <ParentFolderIds xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+    <DistinguishedFolderId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Id="inbox">
+      <Mailbox xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
+        <EmailAddress xmlns="http://schemas.microsoft.com/exchange/services/2006/types">shared@example.com</EmailAddress>
+      </Mailbox>
+    </DistinguishedFolderId>
+    <FolderId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Id="AAOrders=="></FolderId>
+    <FolderId xmlns="http://schemas.microsoft.com/exchange/services/2006/types" Id="AAArchive==" ChangeKey="CK"></FolderId>
+  </ParentFolderIds>
+</FindItem>

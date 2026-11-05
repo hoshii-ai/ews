@@ -52,6 +52,12 @@ func DateTimeReceivedRange(from, to time.Time) *Restriction {
 	}}
 }
 
+// DateTimeReceivedSince restricts to items with since <= item:DateTimeReceived, with no upper bound.
+func DateTimeReceivedSince(since time.Time) *Restriction {
+	f, fc := fieldIsConstant("item:DateTimeReceived", since.UTC().Format(time.RFC3339))
+	return &Restriction{IsGreaterThanOrEqualTo: &IsGreaterThanOrEqualTo{FieldURI: f, FieldURIOrConstant: fc}}
+}
+
 type IsEqualTo struct {
 	FieldURI           *FieldURI           `xml:"http://schemas.microsoft.com/exchange/services/2006/types FieldURI,omitempty"`
 	ExtendedFieldURI   *ExtendedFieldURI   `xml:"http://schemas.microsoft.com/exchange/services/2006/types ExtendedFieldURI,omitempty"`

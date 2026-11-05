@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"errors"
-	"fmt"
 )
 
 // --- MoveItem ---
@@ -136,14 +135,8 @@ func FindItemsByInternetMessageID(ctx context.Context, c ContextClient, folders 
 		return nil, err
 	}
 	msgs := env.Body.Response.Messages.Message
-	// A request-level failure (ErrorServerBusy, a server refusing several folders) is one error message.
-	if len(msgs) == 1 && len(ordered) > 1 {
-		if err := msgs[0].err(); err != nil {
-			return nil, err
-		}
-	}
-	if len(msgs) != len(ordered) {
-		return nil, fmt.Errorf("ews: FindItemsByInternetMessageID asked %d folders, got %d response messages", len(ordered), len(msgs))
+	if err := checkFolderResponses(msgs, len(ordered)); err != nil {
+		return nil, err
 	}
 
 	res := make([]FolderItems, len(ordered))
