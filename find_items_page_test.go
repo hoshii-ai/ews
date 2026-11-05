@@ -277,13 +277,18 @@ func TestFindItemsPagesReportsAFolderErrorAndKeepsTheOthers(t *testing.T) {
 	assert.Equal(t, "10-01T10", receivedTimes(pages[2].Page.Items)[0])
 }
 
-func TestFindItemsPagesFailsWhenEveryFolderFailed(t *testing.T) {
+func TestFindItemsPagesKeepsEveryFolderErrorWhenEveryFolderFailed(t *testing.T) {
 	srv, _, _ := newServer(t, reply{200, fixture(t, "find_pages_all_failed.xml")})
 	c := NewContextClient(srv.URL, "u", "p", nil)
-	_, err := FindItemsPages(context.Background(), c, probeFolders, FindItemsOptions{MaxEntries: 5})
-	var re *ResponseError
-	require.True(t, errors.As(err, &re), err)
-	assert.Equal(t, "ErrorFolderNotFound", re.Code, "the first folder's error")
+	pages, err := FindItemsPages(context.Background(), c, probeFolders, FindItemsOptions{MaxEntries: 5})
+	require.NoError(t, err)
+	require.Len(t, pages, 3)
+	for i, want := range []string{"ErrorFolderNotFound", "ErrorFolderNotFound", "ErrorAccessDenied"} {
+		var re *ResponseError
+		require.True(t, errors.As(pages[i].Err, &re), pages[i].Err)
+		assert.Equal(t, want, re.Code)
+		assert.Nil(t, pages[i].Page)
+	}
 }
 
 func TestFindItemsPagesReturnsARequestLevelError(t *testing.T) {

@@ -135,6 +135,9 @@ func FindItemsPage(ctx context.Context, c ContextClient, folder FolderRef, o Fin
 	if err != nil {
 		return nil, err
 	}
+	if pages[0].Err != nil {
+		return nil, pages[0].Err
+	}
 	return pages[0].Page, nil
 }
 
@@ -143,8 +146,8 @@ func FindItemsPage(ctx context.Context, c ContextClient, folder FolderRef, o Fin
 // and paged on its own and never merged: the restriction, the sort and the
 // offset apply to every folder, so the request returns page k of each folder.
 // The result follows the order of folders. A folder whose response message is
-// an error carries it in Err and the others keep their page; the call fails
-// only when the request fails as a whole or every folder failed.
+// an error carries it in Err and the others keep their page, even when every
+// folder failed; the call fails only when the request fails as a whole.
 func FindItemsPages(ctx context.Context, c ContextClient, folders []FolderRef, o FindItemsOptions, opts ...RequestOption) ([]FolderItemsPage, error) {
 	if len(folders) == 0 {
 		return nil, errors.New("ews: FindItemsPages needs a folder")
@@ -210,8 +213,6 @@ func FindItemsPages(ctx context.Context, c ContextClient, folders []FolderRef, o
 	// The request lists distinguished folders before folder ids, and the response messages follow it.
 	nextDistinguished, nextId := 0, len(req.ParentFolderIds.DistinguishedFolderId)
 	pages := make([]FolderItemsPage, len(folders))
-	var firstErr error
-	failed := 0
 	for i, f := range folders {
 		var msg findItemsPageMessage
 		if f.DistinguishedId != "" {
@@ -222,10 +223,6 @@ func FindItemsPages(ctx context.Context, c ContextClient, folders []FolderRef, o
 		pages[i].Folder = f
 		if err := msg.err(); err != nil {
 			pages[i].Err = err
-			if firstErr == nil {
-				firstErr = err
-			}
-			failed++
 			continue
 		}
 		page, err := msg.page(o.Offset, max, env.Header.ServerVersionInfo)
@@ -233,9 +230,6 @@ func FindItemsPages(ctx context.Context, c ContextClient, folders []FolderRef, o
 			return nil, err
 		}
 		pages[i].Page = page
-	}
-	if failed == len(folders) {
-		return nil, firstErr
 	}
 	return pages, nil
 }
