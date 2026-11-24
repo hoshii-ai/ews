@@ -205,6 +205,32 @@ func TestSendItemChecksResponseClass(t *testing.T) {
 	assert.Equal(t, "ErrorItemNotFound", re.Code)
 }
 
+func TestDeleteItem(t *testing.T) {
+	srv, reqs, bodies := newServer(t, reply{200, fixture(t, "delete_item_ok.xml")}, reply{200, fixture(t, "delete_item_second_missing.xml")})
+	c := NewContextClient(srv.URL, "u", "p", nil)
+	ctx := context.Background()
+
+	require.NoError(t, DeleteItem(ctx, c, []ItemId{{Id: "AAMk1", ChangeKey: "CK1"}}, DeleteTypeHardDelete, WithAnchorMailbox("a@example.com")))
+	assert.Equal(t, "a@example.com", (*reqs)[0].Header.Get("X-AnchorMailbox"))
+	golden(t, "delete_item_request.golden.xml", bodyOf(t, (*bodies)[0], "DeleteItem"))
+
+	// one response message per item: the second item's error is the result
+	err := DeleteItem(ctx, c, []ItemId{{Id: "AAMk1"}, {Id: "AAMk2"}}, DeleteTypeMoveToDeletedItems)
+	var re *ResponseError
+	require.True(t, errors.As(err, &re))
+	assert.Equal(t, "ErrorItemNotFound", re.Code)
+	assert.Contains(t, (*bodies)[1], `DeleteType="MoveToDeletedItems"`)
+	assert.Contains(t, (*bodies)[1], `Id="AAMk2"`)
+}
+
+func TestDeleteItemValidatesItsInput(t *testing.T) {
+	c := NewContextClient("http://unused.invalid", "u", "p", nil)
+	ctx := context.Background()
+	assert.Error(t, DeleteItem(ctx, c, nil, DeleteTypeHardDelete))
+	assert.Error(t, DeleteItem(ctx, c, []ItemId{{Id: "AAMk1"}, {}}, DeleteTypeHardDelete))
+	assert.Error(t, DeleteItem(ctx, c, []ItemId{{Id: "AAMk1"}}, ""))
+}
+
 func TestFindItemsPageAssociated(t *testing.T) {
 	srv, _, bodies := newServer(t, reply{200, fixture(t, "find_empty.xml")})
 	c := NewContextClient(srv.URL, "u", "p", nil)
