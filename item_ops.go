@@ -66,6 +66,66 @@ func MoveItem(ctx context.Context, c ContextClient, item ItemId, to FolderRef, o
 	return &moved, nil
 }
 
+// --- DeleteItem ---
+
+// DeleteType says what DeleteItem does with the items.
+type DeleteType string
+
+const (
+	// DeleteTypeHardDelete removes the items permanently.
+	DeleteTypeHardDelete DeleteType = "HardDelete"
+	// DeleteTypeSoftDelete moves the items to the dumpster, when it is enabled.
+	DeleteTypeSoftDelete DeleteType = "SoftDelete"
+	// DeleteTypeMoveToDeletedItems moves the items to the Deleted Items folder.
+	DeleteTypeMoveToDeletedItems DeleteType = "MoveToDeletedItems"
+)
+
+type deleteItemRequest struct {
+	XMLName    xml.Name   `xml:"http://schemas.microsoft.com/exchange/services/2006/messages DeleteItem"`
+	DeleteType DeleteType `xml:"DeleteType,attr"`
+	ItemIds    ItemIds    `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ItemIds"`
+}
+
+type deleteItemEnvelope struct {
+	Body struct {
+		Response struct {
+			Messages struct {
+				Message []responseMessage `xml:"http://schemas.microsoft.com/exchange/services/2006/messages DeleteItemResponseMessage"`
+			} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages ResponseMessages"`
+		} `xml:"http://schemas.microsoft.com/exchange/services/2006/messages DeleteItemResponse"`
+	} `xml:"Body"`
+}
+
+// DeleteItem deletes items. It does not set SendMeetingCancellations or
+// AffectedTaskOccurrences, which the server requires for calendar items and
+// tasks, so it serves messages and other plain items. The server answers one
+// response message per item, in request order; the first one that is an error
+// is returned as *ResponseError, and the items before it are deleted.
+func DeleteItem(ctx context.Context, c ContextClient, items []ItemId, deleteType DeleteType, opts ...RequestOption) error {
+	if len(items) == 0 {
+		return errors.New("ews: DeleteItem needs an item id")
+	}
+	for _, item := range items {
+		if item.Id == "" {
+			return errors.New("ews: DeleteItem needs non-empty item ids")
+		}
+	}
+	if deleteType == "" {
+		return errors.New("ews: DeleteItem needs a delete type")
+	}
+	req := deleteItemRequest{DeleteType: deleteType, ItemIds: ItemIds{ItemId: items}}
+	var env deleteItemEnvelope
+	if err := call(ctx, c, &req, &env, opts); err != nil {
+		return err
+	}
+	for _, msg := range env.Body.Response.Messages.Message {
+		if err := msg.err(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // --- FindItemByInternetMessageID ---
 
 // FindItemByInternetMessageID looks up items in folder whose Internet
